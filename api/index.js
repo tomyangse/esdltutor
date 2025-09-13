@@ -51,7 +51,8 @@ app.post('/api', async (req, res) => {
         const model = genAI.getGenerativeModel({
             model: "gemini-1.5-flash",
             systemInstruction: systemPrompt,
-            generationConfig: { responseMimeType: "application/json" }
+            // 【已修复】将 responseMimeType 更改为 response_mime_type
+            generationConfig: { response_mime_type: "application/json" }
         });
 
         const imagePart = {
@@ -82,3 +83,4 @@ if (process.env.NODE_ENV !== 'production') {
 
 // 默认导出 app 实例，供 Vercel 使用
 export default app;
+
