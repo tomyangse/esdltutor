@@ -66,13 +66,11 @@ app.post('/api', async (req, res) => {
         const response = result.response;
         const textFromAI = response.text();
         
-        // 【最终稳健性修复】尝试解析JSON，如果失败，则将原文作为解释返回
         try {
             const jsonStart = textFromAI.indexOf('{');
             const jsonEnd = textFromAI.lastIndexOf('}');
             
             if (jsonStart === -1 || jsonEnd === -1 || jsonStart > jsonEnd) {
-                // 如果找不到JSON，就认为整个返回都是解释性文本
                 throw new Error("模型返回的文本中未找到有效的JSON对象。");
             }
 
@@ -81,8 +79,7 @@ app.post('/api', async (req, res) => {
             res.json(analysis);
 
         } catch (parseError) {
-            // 如果JSON解析失败，说明AI返回了纯文本，我们把它包装成一个错误对象返回
-            console.warn('JSON parsing failed, returning raw text from AI.');
+            console.warn('JSON parsing failed, returning raw text from AI as fallback.');
             res.json({
                 correctAnswer: "无法确定",
                 explanation: `AI返回了非结构化文本，可能是因为它无法分析图片。原文如下：\n\n"${textFromAI}"`,
@@ -91,8 +88,9 @@ app.post('/api', async (req, res) => {
         }
 
     } catch (apiError) {
-        console.error('Error calling Gemini API:', apiError);
-        res.status(500).json({ error: '调用 Gemini API 时发生内部错误' });
+        // 【优化】返回更具体的错误信息
+        console.error('An unexpected error occurred in the API route:', apiError);
+        res.status(500).json({ error: `调用 API 时发生意外错误: ${apiError.message}` });
     }
 });
 
