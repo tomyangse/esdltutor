@@ -17,7 +17,7 @@ app.use(express.json({ limit: '50mb' }));
 // 从环境变量中获取 API 密钥
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 【已更新】根据您提供的Gemini示例，重构最终版的系统指令
+// 【最终版指令】根据您提供的Gemini示例，重构的系统指令
 const systemPrompt = `
 **身份:** 你是一位专门解答西班牙驾照理论考试 (examen teórico del permiso de conducir) 的AI专家。
 
@@ -46,7 +46,8 @@ app.post('/api', async (req, res) => {
         }
 
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            // 【核心修复】升级到更强大的Pro模型，以确保指令能被严格遵循
+            model: "gemini-1.5-pro-latest",
             systemInstruction: systemPrompt,
         });
 
