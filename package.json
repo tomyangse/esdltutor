@@ -1,0 +1,28 @@
+{
+  "name": "spanish-driving-test-analyzer",
+  "version": "1.0.0",
+  "description": "A full-stack app to analyze spanish driving test questions using Gemini API.",
+  "main": "api/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node api/index.js",
+    "dev": "vercel dev"
+  },
+  "keywords": [
+    "gemini",
+    "vercel",
+    "dgt",
+    "spain"
+  ],
+  "author": "Gemini",
+  "license": "ISC",
+  "dependencies": {
+    "@google/generative-ai": "^0.3.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2"
+  },
+  "devDependencies": {
+    "vercel": "^34.0.0"
+  }
+}
