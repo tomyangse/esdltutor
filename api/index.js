@@ -17,11 +17,11 @@ app.use(express.json({ limit: '50mb' }));
 // 从环境变量中获取 API 密钥
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 【最终版指令】根据您提供的Gemini示例，重构的系统指令
+// 【最终版指令】采用更简单的文本标记格式，以提高AI遵循指令的稳定性
 const systemPrompt = `
 **身份:** 你是一位专门解答西班牙驾照理论考试 (examen teórico del permiso de conducir) 的AI专家。
 
-**任务:** 用户会上传一张西班牙驾照理论考试的练习题图片。你的任务是严格根据西班牙驾照考试的官方知识库，并模仿范例的逻辑结构来分析并解答这道题。
+**任务:** 用户会上传一张西班牙驾照理论考试的练习题图片。你的任务是严格根据西班牙驾照考试的官方知识库来分析并解答这道题。
 
 **核心指令:**
 1.  **独立判断**: 严格根据西班牙交通法规，独立判断出唯一的正确答案。必须完全忽略图片上可能存在的任何已有标记。
@@ -31,11 +31,23 @@ const systemPrompt = `
     * **本题解析:** 结合题目，总结并解释为什么该法规适用于本题，从而得出正确答案。
 
 **输出格式:**
-你的回答必须严格遵守以下JSON格式，不能有任何多余的文字或标记:
-{
-  "correctAnswer": "你独立判断出的正确选项字母",
-  "explanation": "包含了'法规依据', '特殊情况', 和 '本题解析'三个部分的详细中文解释。"
-}`;
+你的回答必须严格遵守以下文本标记格式，不能有任何多余的文字:
+<答案>你独立判断出的正确选项字母</答案><解释>包含了'法规依据', '特殊情况', 和 '本题解析'三个部分的详细中文解释。</解释>`;
+
+// 定义一个辅助函数来解析AI返回的带标记的文本
+function parseAIResponse(text) {
+    const answerMatch = text.match(/<答案>(.*?)<\/答案>/);
+    const explanationMatch = text.match(/<解释>([\s\S]*?)<\/解释>/);
+
+    if (answerMatch && answerMatch[1] && explanationMatch && explanationMatch[1]) {
+        return {
+            correctAnswer: answerMatch[1].trim(),
+            explanation: explanationMatch[1].trim(),
+        };
+    }
+    return null; // 如果格式不匹配，返回null
+}
+
 
 // 定义 POST API 端点
 app.post('/api', async (req, res) => {
@@ -46,8 +58,8 @@ app.post('/api', async (req, res) => {
         }
 
         const model = genAI.getGenerativeModel({
-            // 【核心修复】升级到更强大的Pro模型，以确保指令能被严格遵循
-            model: "gemini-1.5-pro-latest",
+            // 使用强大的Pro模型来处理复杂指令
+            model: "gemini-1.5-slash",
             systemInstruction: systemPrompt,
         });
 
@@ -62,17 +74,18 @@ app.post('/api', async (req, res) => {
         const response = result.response;
         const textFromAI = response.text();
         
-        try {
-            // 尝试直接解析AI返回的文本为JSON
-            const analysis = JSON.parse(textFromAI);
-            res.json(analysis);
+        // 使用新的解析函数来处理AI返回的文本
+        const analysis = parseAIResponse(textFromAI);
 
-        } catch (parseError) {
-            // 如果解析失败，说明AI返回了非JSON文本
-            console.warn('JSON parsing failed, returning raw text from AI as fallback explanation.');
+        if (analysis) {
+            // 如果成功解析，返回JSON
+            res.json(analysis);
+        } else {
+            // 如果解析失败，说明AI返回了非结构化文本
+            console.warn('AI response parsing failed, returning raw text as fallback explanation.');
             res.json({
                 correctAnswer: "无法确定",
-                explanation: `AI未能按格式要求返回结果，可能是因为它无法分析图片。其原始回复如下：\n\n"${textFromAI}"`
+                explanation: `AI未能按预期的文本标记格式返回结果。其原始回复如下：\n\n"${textFromAI}"`
             });
         }
 
