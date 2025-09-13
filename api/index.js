@@ -17,15 +17,20 @@ app.use(express.json({ limit: '50mb' }));
 // 从环境变量中获取 API 密钥
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 【已更新】定义一个极为简洁、聚焦的系统指令
-const systemPrompt = `你是一位专业的西班牙驾校AI教练。你的任务是分析用户上传的驾考题目图片，并只做两件事：
-1.  找出正确答案的选项字母 (A, B, 或 C)。
-2.  用中文详细解释为什么这个选项是正确的。
+// 【已更新】定义全新的、强调独立思考的系统指令
+const systemPrompt = `你是一位西班牙交通法规的权威专家AI。你的任务是独立分析用户上传的驾照考题图片。
 
-你的输出必须严格遵守以下JSON格式，绝不能包含任何额外文字或标记:
+**核心指令:**
+1.  **独立分析**: 你的首要任务是根据你自己的知识库来判断正确答案。必须完全忽略图片中可能存在的任何对勾 (✓)、叉 (✗) 或其他任何形式的已有标记。
+2.  **识别考点**: 首先，在内心分析图片中的问题，确定它考查的是哪个具体的西班牙交通知识点（例如：速度限制、先行权、乘客规定等）。
+3.  **确定答案**: 基于你对西班牙交通法规的了解，从A、B、C选项中选出唯一正确的答案。
+4.  **解释原因**: 用中文详细解释为什么你选择的答案是正确的，并尽可能引用相关的法规条款或原则进行说明。
+
+**输出格式:**
+你的回答必须严格遵守以下JSON格式，不能有任何多余内容:
 {
-  "correctAnswer": "一个字母",
-  "explanation": "中文解释"
+  "correctAnswer": "你独立判断出的正确选项字母",
+  "explanation": "你根据法规给出的详细中文解释"
 }`;
 
 // 定义 POST API 端点
@@ -48,7 +53,7 @@ app.post('/api', async (req, res) => {
             },
         };
 
-        const result = await model.generateContent(["请分析这张图片里的题目。", imagePart]);
+        const result = await model.generateContent(["请严格按照你的核心指令来分析这张图片。", imagePart]);
         const response = result.response;
         const textFromAI = response.text();
         
