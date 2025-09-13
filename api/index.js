@@ -17,7 +17,7 @@ app.use(express.json({ limit: '50mb' }));
 // 从环境变量中获取 API 密钥
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 【已更新】定义系统指令（Prompt），并强化JSON输出要求
+// 定义系统指令（Prompt），并强化JSON输出要求
 const systemPrompt = `你是一位精通西班牙交通法规的资深驾校教练。你的任务是分析用户上传的西班牙驾照理论考试练习题图片。
 请遵循以下步骤和格式，用中文进行回复：
 1.  **确定正确答案**：识别题目中的正确选项 (A, B, 或 C)。
@@ -50,9 +50,9 @@ app.post('/api', async (req, res) => {
             return res.status(400).json({ error: '请求体中未找到图片数据 (image data not found in body)' });
         }
 
-        // 【已更新】移除有问题的 generationConfig，完全依赖系统指令
+        // 【最终修复】使用通用性更强的 gemini-1.5-flash 模型
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-pro-latest",
+            model: "gemini-1.5-flash",
             systemInstruction: systemPrompt,
         });
 
