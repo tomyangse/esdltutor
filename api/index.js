@@ -7,7 +7,7 @@ import 'dotenv/config';
 // 初始化 Express 应用
 const app = express();
 
-// 使用 CORS 中间件，允许所有来源的跨域请求
+// 使用 CORS 中件间，允许所有来源的跨域请求
 app.use(cors()); 
 
 // 使用 Express 内置的 JSON 解析中间件
@@ -50,7 +50,6 @@ app.post('/api', async (req, res) => {
             return res.status(400).json({ error: '请求体中未找到图片数据 (image data not found in body)' });
         }
 
-        // 【最终修复】使用通用性更强的 gemini-1.5-flash 模型
         const model = genAI.getGenerativeModel({
             model: "gemini-1.5-flash",
             systemInstruction: systemPrompt,
@@ -65,15 +64,24 @@ app.post('/api', async (req, res) => {
 
         const result = await model.generateContent(["请根据系统指令分析这张图片里的题目。", imagePart]);
         const response = result.response;
-        // 增加一个replace来清理模型可能意外添加的代码块标记
-        const cleanedText = response.text().replace(/```json/g, '').replace(/```/g, '').trim();
-        const analysis = JSON.parse(cleanedText);
+        const textFromAI = response.text();
+        
+        // 【最终稳健性修复】从AI返回的文本中提取出JSON部分
+        const jsonStart = textFromAI.indexOf('{');
+        const jsonEnd = textFromAI.lastIndexOf('}');
+        
+        if (jsonStart === -1 || jsonEnd === -1 || jsonStart > jsonEnd) {
+            throw new Error("模型返回的文本中未找到有效的JSON对象。");
+        }
+
+        const jsonString = textFromAI.substring(jsonStart, jsonEnd + 1);
+        const analysis = JSON.parse(jsonString);
         
         res.json(analysis);
 
     } catch (error) {
-        console.error('Error calling Gemini API:', error);
-        res.status(500).json({ error: '调用 Gemini API 时发生内部错误 (Internal server error while calling Gemini API)' });
+        console.error('Error calling or parsing Gemini API response:', error);
+        res.status(500).json({ error: '调用或解析 Gemini API 响应时发生内部错误' });
     }
 });
 
