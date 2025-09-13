@@ -59,7 +59,7 @@ app.post('/api', async (req, res) => {
 
         const model = genAI.getGenerativeModel({
             // 使用强大的Pro模型来处理复杂指令
-            model: "gemini-1.5-slash",
+            model: "gemini-1.5-flash",
             systemInstruction: systemPrompt,
         });
 
@@ -103,4 +103,5 @@ if (process.env.NODE_ENV !== 'production') {
 
 // 默认导出 app 实例，供 Vercel 使用
 export default app;
+
 
