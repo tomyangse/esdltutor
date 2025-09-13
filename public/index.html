@@ -5,242 +5,189 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>西班牙驾考题目智能分析器</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .file-drop-zone {
+        body { font-family: 'Inter', sans-serif; }
+        .drop-zone {
+            border: 2px dashed #cbd5e1;
             transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
         }
-        .file-drop-zone.drag-over {
-            background-color: #e0f2fe;
-            border-color: #0284c7;
+        .drop-zone.drag-over {
+            background-color: #e2e8f0;
+            border-color: #4f46e5;
         }
-        #result-container h3 {
-            font-size: 1.125rem;
-            font-weight: 600;
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
-            display: flex;
-            align-items: center;
-        }
-         #result-container h3 svg {
-            margin-right: 0.5rem;
-         }
         .loader {
-            border-top-color: #3498db;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
             animation: spin 1s linear infinite;
         }
         @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
-<body class="bg-slate-100 flex items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-8">
-        <header class="text-center mb-6">
-            <h1 class="text-3xl font-bold text-slate-800">西班牙驾考题目智能分析器</h1>
+<body class="bg-slate-50 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-5xl mx-auto bg-white rounded-2xl shadow-lg p-6 md:p-10">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-800">西班牙驾考题目智能分析器</h1>
             <p class="text-slate-500 mt-2">上传练习题图片，AI助您轻松理解交规，高效备考！</p>
         </header>
 
-        <main class="grid md:grid-cols-2 gap-8">
-            <!-- Left Side: Image Upload -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Side: Uploader and Preview -->
             <div class="flex flex-col">
-                <div id="file-drop-zone" class="relative w-full h-64 border-2 border-dashed border-slate-300 rounded-lg flex flex-col justify-center items-center text-center cursor-pointer bg-slate-50 hover:bg-slate-100">
-                    <input type="file" id="image-upload" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/png, image/jpeg, image/webp">
-                    <div id="upload-prompt">
-                        <svg class="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
-                            <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
-                        </svg>
-                        <p class="mt-2 text-sm text-slate-600">
-                            <span class="font-semibold text-sky-600">点击上传</span> 或拖拽图片到这里
-                        </p>
-                        <p class="text-xs text-slate-500">支持 PNG, JPG, WEBP</p>
-                    </div>
-                    <img id="image-preview" src="" alt="题目预览" class="hidden absolute inset-0 w-full h-full object-contain rounded-lg p-2">
+                <div id="dropZone" class="drop-zone w-full h-64 flex flex-col items-center justify-center rounded-lg text-center cursor-pointer hover:bg-slate-100">
+                    <svg class="w-12 h-12 text-slate-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                    <p class="text-slate-500">拖拽图片到这里，或 <span class="font-semibold text-indigo-600">点击上传</span></p>
+                    <input type="file" id="fileInput" class="hidden" accept="image/*">
                 </div>
-
-                <button id="analyze-button" class="mt-4 w-full bg-sky-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-sky-700 disabled:bg-slate-300 disabled:cursor-not-allowed transition-colors duration-300" disabled>
+                <div id="imagePreviewContainer" class="mt-4 w-full border rounded-lg p-2 bg-slate-100 hidden">
+                    <img id="imagePreview" src="#" alt="图片预览" class="max-w-full max-h-80 mx-auto rounded">
+                </div>
+                <button id="analyzeButton" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg mt-4 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-400 disabled:cursor-not-allowed" disabled>
                     开始分析
                 </button>
             </div>
 
             <!-- Right Side: Analysis Result -->
-            <div class="bg-slate-50 rounded-lg p-6 min-h-[20rem] flex flex-col justify-center">
-                <div id="loading-indicator" class="text-center hidden">
-                    <div class="loader ease-linear rounded-full border-4 border-t-4 border-gray-200 h-12 w-12 mx-auto"></div>
-                    <p class="mt-4 text-slate-600">正在智能分析中，请稍候...</p>
-                </div>
-                <div id="result-container" class="hidden text-slate-700">
-                    <!-- Results will be injected here -->
-                </div>
-                <div id="initial-prompt" class="text-center text-slate-500">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4 text-slate-400"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"></path><path d="m9 12 2 2 4-4"></path></svg>
-                    <h2 class="font-semibold text-lg">分析结果将在此处显示</h2>
-                    <p class="text-sm">上传图片后，点击“开始分析”按钮即可查看。</p>
-                </div>
-                 <div id="error-message" class="hidden text-center text-red-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto mb-4"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                    <p class="font-semibold">分析失败</p>
-                    <p id="error-text" class="text-sm mt-1"></p>
+            <div id="resultContainer" class="bg-slate-50 rounded-lg p-6 min-h-[300px] flex items-center justify-center">
+                <div class="text-center text-slate-500">
+                    <svg class="w-16 h-16 mx-auto text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <p class="mt-2">分析结果将在此处显示</p>
                 </div>
             </div>
-        </main>
+        </div>
     </div>
 
     <script>
-        const fileDropZone = document.getElementById('file-drop-zone');
-        const imageUpload = document.getElementById('image-upload');
-        const imagePreview = document.getElementById('image-preview');
-        const uploadPrompt = document.getElementById('upload-prompt');
-        const analyzeButton = document.getElementById('analyze-button');
-        const loadingIndicator = document.getElementById('loading-indicator');
-        const resultContainer = document.getElementById('result-container');
-        const initialPrompt = document.getElementById('initial-prompt');
-        const errorMessage = document.getElementById('error-message');
-        const errorText = document.getElementById('error-text');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+        const analyzeButton = document.getElementById('analyzeButton');
+        const resultContainer = document.getElementById('resultContainer');
+        let imageBase64 = null;
 
-        let fileData = null;
-        let base64Image = null;
-        
         // --- Drag and Drop Logic ---
-        fileDropZone.addEventListener('dragover', (e) => {
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
-            fileDropZone.classList.add('drag-over');
+            dropZone.classList.add('drag-over');
         });
-
-        fileDropZone.addEventListener('dragleave', () => {
-            fileDropZone.classList.remove('drag-over');
-        });
-
-        fileDropZone.addEventListener('drop', (e) => {
+        dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+        dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
-            fileDropZone.classList.remove('drag-over');
+            dropZone.classList.remove('drag-over');
             const files = e.dataTransfer.files;
-            if (files.length) {
+            if (files.length > 0) {
                 handleFile(files[0]);
             }
         });
-
-        imageUpload.addEventListener('change', (e) => {
-            const files = e.target.files;
-            if (files.length) {
-                handleFile(files[0]);
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
             }
         });
 
-        function handleFile(file) {
-            if (!file.type.startsWith('image/')) {
-                displayError('请上传图片文件 (PNG, JPG, 等)。');
-                return;
+        // --- File Handling Logic ---
+        const handleFile = (file) => {
+            if (file && file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    imageBase64 = e.target.result.split(',')[1];
+                    imagePreviewContainer.classList.remove('hidden');
+                    analyzeButton.disabled = false;
+                };
+                reader.readAsDataURL(file);
             }
+        };
 
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.src = e.target.result;
-                imagePreview.classList.remove('hidden');
-                uploadPrompt.classList.add('hidden');
-                analyzeButton.disabled = false;
-                fileData = file;
-                base64Image = e.target.result.split(',')[1];
-            };
-            reader.readAsDataURL(file);
-            clearResults();
-        }
+        // --- Display Logic ---
+        const displayLoading = () => {
+            resultContainer.innerHTML = `
+                <div class="text-center">
+                    <div class="loader mx-auto"></div>
+                    <p class="mt-4 text-slate-500">AI教练正在分析中，请稍候...</p>
+                </div>
+            `;
+        };
+
+        const displayError = (message = '分析失败') => {
+            resultContainer.innerHTML = `
+                <div class="text-center text-red-600 bg-red-50 p-6 rounded-lg">
+                    <h3 class="font-bold text-xl mb-2">分析失败</h3>
+                    <p class="text-red-700">${message}</p>
+                </div>
+            `;
+        };
+
+        const displayResult = (data) => {
+            // 【核心修复】在这里过滤掉 relatedPoints 数组中任何无效的条目 (如 null 或 undefined)
+            const validRelatedPoints = (data.relatedPoints || []).filter(point => point && typeof point === 'object');
+            
+            const relatedPointsHtml = validRelatedPoints.length > 0 ? `
+                <div class="mt-6 border-t pt-4">
+                    <h4 class="font-semibold text-lg text-slate-700">相关知识点</h4>
+                    ${validRelatedPoints.map(point => `
+                        <div class="mt-3 bg-white p-3 rounded-md shadow-sm">
+                            <h5 class="font-semibold text-indigo-700">${point.title || '无标题'}</h5>
+                            <p class="text-slate-600 mt-1">${point.content || '无内容'}</p>
+                        </div>
+                    `).join('')}
+                </div>
+            ` : '';
+
+            const resultHtml = `
+                <div>
+                    <h3 class="font-bold text-xl mb-3 text-slate-800">分析结果</h3>
+                    <div class="p-4 bg-blue-100 rounded-lg border border-blue-200">
+                        <p class="font-semibold text-blue-800">正确答案: <span class="text-2xl ml-2 font-mono">${data.correctAnswer}</span></p>
+                    </div>
+                    <div class="mt-4">
+                        <h4 class="font-semibold text-lg text-slate-700">原因解析</h4>
+                        <p class="text-slate-600 mt-1 whitespace-pre-wrap">${data.explanation}</p>
+                    </div>
+                    ${relatedPointsHtml}
+                </div>
+            `;
+            resultContainer.innerHTML = resultHtml;
+        };
         
-        function clearResults() {
-            initialPrompt.classList.remove('hidden');
-            resultContainer.classList.add('hidden');
-            errorMessage.classList.add('hidden');
-            resultContainer.innerHTML = '';
-        }
-
-        function displayError(message) {
-            errorMessage.classList.remove('hidden');
-            errorText.textContent = message;
-            initialPrompt.classList.add('hidden');
-            resultContainer.classList.add('hidden');
-            loadingIndicator.classList.add('hidden');
-        }
-
-        analyzeButton.addEventListener('click', () => {
-            if (base64Image) {
-                callBackendAPI(base64Image);
-            }
-        });
-        
-        async function callBackendAPI(imageData) {
-            loadingIndicator.classList.remove('hidden');
-            initialPrompt.classList.add('hidden');
-            resultContainer.classList.add('hidden');
-            errorMessage.classList.add('hidden');
+        // --- API Call Logic ---
+        analyzeButton.addEventListener('click', async () => {
+            if (!imageBase64) return;
+            
+            displayLoading();
             analyzeButton.disabled = true;
 
-            const apiUrl = "/api"; // The endpoint of our own backend serverless function
-
             try {
-                const response = await fetch(apiUrl, {
+                const response = await fetch('/api', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ image: imageData })
+                    body: JSON.stringify({ image: imageBase64 }),
                 });
 
                 if (!response.ok) {
-                    const errorResult = await response.json();
-                    throw new Error(errorResult.error || `请求失败，状态码: ${response.status}`);
+                    const errorData = await response.json().catch(() => ({ error: '无法解析服务器错误响应' }));
+                    throw new Error(errorData.error || response.statusText);
                 }
-
-                const analysis = await response.json();
-                displayResults(analysis);
+                
+                const data = await response.json();
+                displayResult(data);
 
             } catch (error) {
-                console.error('调用后端 API 出错:', error);
+                console.error('Analysis error:', error);
                 displayError(`分析过程中出现错误: ${error.message}`);
             } finally {
-                loadingIndicator.classList.add('hidden');
                 analyzeButton.disabled = false;
             }
-        }
-
-        function displayResults(data) {
-            resultContainer.innerHTML = `
-                <div>
-                    <h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-green-600"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                        正确答案
-                    </h3>
-                    <p class="pl-8 text-2xl font-bold text-green-700">${data.correctAnswer}</p>
-                </div>
-                <div>
-                    <h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-600"><path d="M18 3a3 3 0 0 0-3 3v12a3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3H6a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3V6a3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3h12a3 3 0 0 0 3-3 3 3 0 0 0-3-3z"></path></svg>
-                        原因解析
-                    </h3>
-                    <p class="pl-8 text-sm leading-relaxed">${data.explanation.replace(/\n/g, '<br>')}</p>
-                </div>
-                <div>
-                    <h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><path d="m12 19-7-7 7-7"></path><path d="m19 19-7-7 7-7"></path></svg>
-                        知识点扩展
-                    </h3>
-                    <div class="pl-8 space-y-4 text-sm">
-                        <div class="bg-indigo-50 p-3 rounded-md border border-indigo-200">
-                           <p class="font-semibold text-indigo-800">${data.relatedPoints[0].title}</p>
-                           <p class="mt-1">${data.relatedPoints[0].content}</p>
-                        </div>
-                        <div class="bg-indigo-50 p-3 rounded-md border border-indigo-200">
-                           <p class="font-semibold text-indigo-800">${data.relatedPoints[1].title}</p>
-                           <p class="mt-1">${data.relatedPoints[1].content}</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            resultContainer.classList.remove('hidden');
-        }
-
+        });
     </script>
 </body>
 </html>
+
