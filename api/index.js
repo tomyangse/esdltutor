@@ -7,7 +7,7 @@ import 'dotenv/config';
 // 初始化 Express 应用
 const app = express();
 
-// 使用 CORS 中件间，允许所有来源的跨域请求
+// 使用 CORS 中间件，允许所有来源的跨域请求
 app.use(cors()); 
 
 // 使用 Express 内置的 JSON 解析中间件
@@ -66,22 +66,33 @@ app.post('/api', async (req, res) => {
         const response = result.response;
         const textFromAI = response.text();
         
-        // 【最终稳健性修复】从AI返回的文本中提取出JSON部分
-        const jsonStart = textFromAI.indexOf('{');
-        const jsonEnd = textFromAI.lastIndexOf('}');
-        
-        if (jsonStart === -1 || jsonEnd === -1 || jsonStart > jsonEnd) {
-            throw new Error("模型返回的文本中未找到有效的JSON对象。");
+        // 【最终稳健性修复】尝试解析JSON，如果失败，则将原文作为解释返回
+        try {
+            const jsonStart = textFromAI.indexOf('{');
+            const jsonEnd = textFromAI.lastIndexOf('}');
+            
+            if (jsonStart === -1 || jsonEnd === -1 || jsonStart > jsonEnd) {
+                // 如果找不到JSON，就认为整个返回都是解释性文本
+                throw new Error("模型返回的文本中未找到有效的JSON对象。");
+            }
+
+            const jsonString = textFromAI.substring(jsonStart, jsonEnd + 1);
+            const analysis = JSON.parse(jsonString);
+            res.json(analysis);
+
+        } catch (parseError) {
+            // 如果JSON解析失败，说明AI返回了纯文本，我们把它包装成一个错误对象返回
+            console.warn('JSON parsing failed, returning raw text from AI.');
+            res.json({
+                correctAnswer: "无法确定",
+                explanation: `AI返回了非结构化文本，可能是因为它无法分析图片。原文如下：\n\n"${textFromAI}"`,
+                relatedPoints: []
+            });
         }
 
-        const jsonString = textFromAI.substring(jsonStart, jsonEnd + 1);
-        const analysis = JSON.parse(jsonString);
-        
-        res.json(analysis);
-
-    } catch (error) {
-        console.error('Error calling or parsing Gemini API response:', error);
-        res.status(500).json({ error: '调用或解析 Gemini API 响应时发生内部错误' });
+    } catch (apiError) {
+        console.error('Error calling Gemini API:', apiError);
+        res.status(500).json({ error: '调用 Gemini API 时发生内部错误' });
     }
 });
 
