@@ -49,9 +49,10 @@ app.post('/api', async (req, res) => {
         }
 
         const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash",
+            // 【调试更改】暂时切换到 1.5 Pro 模型来强制刷新部署
+            model: "gemini-1.5-pro-latest",
             systemInstruction: systemPrompt,
-            // 【已修复】将 responseMimeType 更改为 response_mime_type
+            // 【重要修复】确保此处的参数名是正确的下划线格式
             generationConfig: { response_mime_type: "application/json" }
         });
 
