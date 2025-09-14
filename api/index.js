@@ -65,7 +65,7 @@ app.post('/api', async (req, res) => {
 
         const model = genAI.getGenerativeModel({
             // 【核心修复】使用最稳定、最适合图文理解的 gemini-pro-vision 模型
-            model: "gemini-pro-vision",
+            model: "gemini-pro",
             systemInstruction: systemPrompt,
         });
 
@@ -109,4 +109,5 @@ if (process.env.NODE_ENV !== 'production') {
 
 // 默认导出 app 实例，供 Vercel 使用
 export default app;
+
 
