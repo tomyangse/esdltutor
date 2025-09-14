@@ -44,6 +44,21 @@
             font-size: 1.5rem;
             color: #4338ca;
         }
+        .chat-bubble {
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            max-width: 80%;
+        }
+        .user-bubble {
+            background-color: #e0e7ff;
+            color: #3730a3;
+            align-self: flex-end;
+        }
+        .ai-bubble {
+            background-color: #f3f4f6;
+            color: #374151;
+            align-self: flex-start;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800">
@@ -116,12 +131,27 @@
                             <p id="keywords-text" class="whitespace-pre-wrap"></p>
                         </div>
                     </div>
+
+                    <!-- Follow-up Questions Section -->
+                    <div id="follow-up-container" class="hidden mt-6 pt-6 border-t border-slate-200">
+                        <h3 class="text-xl font-bold mb-4 text-slate-800">深入提问</h3>
+                        <div id="conversation-history" class="mb-4 space-y-4 flex flex-col"></div>
+                        <div class="flex gap-2">
+                            <input type="text" id="question-input" class="flex-grow border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="对以上分析有疑问？请在此输入...">
+                            <button id="ask-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 disabled:bg-slate-400">提问</button>
+                        </div>
+                        <div id="follow-up-loader" class="hidden text-center mt-4">
+                            <p class="text-slate-600">AI正在思考中...</p>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </main>
     </div>
 
     <script>
+        // ... (existing variable declarations) ...
         const dropZone = document.getElementById('drop-zone');
         const fileInput = document.getElementById('file-input');
         const analyzeBtn = document.getElementById('analyze-btn');
@@ -139,43 +169,33 @@
         const relatedPointsText = document.getElementById('related-points-text');
         const keywordsText = document.getElementById('keywords-text');
 
+        // New elements for follow-up questions
+        const followUpContainer = document.getElementById('follow-up-container');
+        const conversationHistory = document.getElementById('conversation-history');
+        const questionInput = document.getElementById('question-input');
+        const askBtn = document.getElementById('ask-btn');
+        const followUpLoader = document.getElementById('follow-up-loader');
+
         let imageBase64 = '';
+        let initialAnalysisContext = null;
 
-        // Handle clicks on drop zone
+        // ... (existing file handling and drag/drop listeners) ...
         dropZone.addEventListener('click', () => fileInput.click());
-
-        // Handle file selection
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                handleFile(file);
-            }
-        });
-
-        // Drag and drop events
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('dragover');
-        });
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('dragover');
-        });
+        fileInput.addEventListener('change', (e) => e.target.files[0] && handleFile(e.target.files[0]));
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                handleFile(file);
-            }
+            e.dataTransfer.files[0] && handleFile(e.dataTransfer.files[0]);
         });
+
 
         function handleFile(file) {
             if (!file.type.startsWith('image/')) {
                 displayError('请上传图片文件。');
                 return;
             }
-
             const reader = new FileReader();
             reader.onload = (e) => {
                 imagePreview.src = e.target.result;
@@ -183,6 +203,7 @@
                 imageBase64 = e.target.result.split(',')[1];
                 analyzeBtn.disabled = false;
                 resetResultState();
+                followUpContainer.classList.add('hidden'); // Hide on new image
             };
             reader.readAsDataURL(file);
         }
@@ -214,12 +235,64 @@
                 setLoadingState(false);
             }
         });
+
+        // Event listener for the new "Ask" button
+        askBtn.addEventListener('click', handleFollowUpQuestion);
+        questionInput.addEventListener('keyup', (e) => {
+            if(e.key === 'Enter') {
+                handleFollowUpQuestion();
+            }
+        });
+
+        async function handleFollowUpQuestion() {
+            const userQuestion = questionInput.value.trim();
+            if (!userQuestion || !initialAnalysisContext) return;
+
+            // Display user's question immediately
+            appendChatMessage(userQuestion, 'user');
+            questionInput.value = '';
+            followUpLoader.classList.remove('hidden');
+            askBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        context: initialAnalysisContext,
+                        question: userQuestion
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'AI回答时出现错误。');
+                }
+                const result = await response.json();
+                appendChatMessage(result.answer, 'ai');
+
+            } catch (error) {
+                 appendChatMessage(`抱歉，回答时出现错误: ${error.message}`, 'ai');
+            } finally {
+                followUpLoader.classList.add('hidden');
+                askBtn.disabled = false;
+            }
+        }
         
+        function appendChatMessage(message, sender) {
+            const bubble = document.createElement('div');
+            bubble.classList.add('chat-bubble', sender === 'user' ? 'user-bubble' : 'ai-bubble');
+            bubble.innerText = message;
+            conversationHistory.appendChild(bubble);
+            conversationHistory.scrollTop = conversationHistory.scrollHeight; // Scroll to bottom
+        }
+
         function setLoadingState(isLoading) {
             if (isLoading) {
                 placeholder.classList.add('hidden');
                 errorMessage.classList.add('hidden');
                 resultSections.classList.add('hidden');
+                followUpContainer.classList.add('hidden');
                 loader.classList.remove('hidden');
                 analyzeBtn.disabled = true;
             } else {
@@ -235,6 +308,12 @@
             explanationText.innerText = data.explanation || '无';
             relatedPointsText.innerText = data.relatedPoints || '无';
             keywordsText.innerText = data.keywords || '无';
+
+            // Store context and show follow-up section
+            initialAnalysisContext = data;
+            conversationHistory.innerHTML = '';
+            questionInput.value = '';
+            followUpContainer.classList.remove('hidden');
         }
 
         function displayError(message) {
