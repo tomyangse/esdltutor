@@ -1,6 +1,7 @@
 // 使用 ES 模块导入
 import express from 'express';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// 【核心修复】从 'generative-ai/server' 导入，以获取更底层的控制
+import { GoogleGenerativeAI } from '@google/generative-ai/server';
 import cors from 'cors';
 import 'dotenv/config';
 
@@ -14,8 +15,10 @@ app.use(cors());
 // 增加请求体大小限制，例如50MB，以处理高分辨率图片
 app.use(express.json({ limit: '50mb' }));
 
-// 从环境变量中获取 API 密钥
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+// 【核心修复】在初始化时明确指定使用 'v1beta' API
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, {
+    apiClient: "v1beta",
+});
 
 // 【最终版指令 - 遵循您的两步逻辑】
 const systemPrompt = `
@@ -64,8 +67,8 @@ app.post('/api', async (req, res) => {
         }
 
         const model = genAI.getGenerativeModel({
-            // 【核心修复】使用最稳定、最基础的图文模型 gemini-pro
-            model: "gemini-pro",
+            // 【核心修复】使用在 v1beta 上最强大的模型
+            model: "gemini-1.5-pro-latest", 
             systemInstruction: systemPrompt,
         });
 
