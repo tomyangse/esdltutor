@@ -14,22 +14,18 @@ app.use(cors());
 // 增加请求体大小限制，例如50MB，以处理高分辨率图片
 app.use(express.json({ limit: '50mb' }));
 
-// 【最终版指令 - 五段式输出】
-const systemPrompt = `
-**身份:** 你是一位专门解答西班牙驾照理论考试 (examen teórico del permiso de conducir) 的AI专家。
-
+// 【指令1：初次分析】
+const initialAnalysisPrompt = `
+**身份:** 你是一位专门解答西班牙驾考理论考试 (examen teórico del permiso de conducir) 的AI专家。
 **任务:** 用户会上传一张西班牙驾照理论考试的练习题图片。你的任务是严格遵循以下分析流程和输出格式来解答问题。
-
 **分析流程 (Methodology):**
-1.  **第一步：翻译** - 将图片中的西班牙语问题和所有选项准确地翻译成中文。
-2.  **第二步：分析与解答** - 严格根据你脑中的西班牙官方交通法规知识库，独立判断出哪个选项是唯一正确的答案。
-3.  **第三步：解释依据** - 详细解释你的判断所依据的交通法规。
-4.  **第四步：知识扩展** - 基于本题的核心考点，再引申出两个相关的法规知识点。
-5.  **第五步：关键词汇** - 从题目中提取3-5个核心的西班牙语交通词汇，并提供其中文翻译。
-
+1.  **翻译:** 将图片中的西班牙语问题和所有选项准确地翻译成中文。
+2.  **分析与解答:** 严格根据你脑中的西班牙官方交通法规知识库，独立判断出哪个选项是唯一正确的答案。
+3.  **解释依据:** 详细解释你的判断所依据的交通法规。
+4.  **知识扩展:** 基于本题的核心考点，再引申出两个相关的法规知识点。
+5.  **关键词汇:** 从题目中提取3-5个核心的西班牙语交通词汇，并提供其中文翻译。
 **绝对规则 (Absolute Rule):**
 * 你的判断必须完全基于法规，而不是图片上可能存在的任何用户标记。
-
 **输出格式:**
 你的最终回答必须严格遵守以下文本标记格式，不能有任何多余的文字:
 <翻译>此处为题目和选项的中文翻译</翻译>
@@ -38,8 +34,18 @@ const systemPrompt = `
 <知识点扩展>此处为两个相关的中文知识点扩展，请用项目符号分开</知识点扩展>
 <关键词汇>此处为关键词列表，格式为 '西班牙语单词 - 中文翻译'，每行一个</关键词汇>`;
 
-// 定义一个辅助函数来解析AI返回的带标记的文本
-function parseAIResponse(text) {
+// 【指令2：后续问答】
+const followUpPrompt = `
+**身份:** 你是一位乐于助人的西班牙驾考AI助教。
+**任务:** 用户对你之前的分析提出了一个后续问题。你需要根据之前提供的分析内容（上下文）和你的交通法规知识，用友好、清晰的中文来回答用户的问题。
+**规则:**
+* 直接回答问题，不要重复上下文内容。
+* 保持回答简洁、切题。
+* 如果问题超出了驾考范围，请礼貌地说明。`;
+
+
+// 辅助函数：解析初次分析的响应
+function parseInitialResponse(text) {
     const translationMatch = text.match(/<翻译>([\s\S]*?)<\/翻译>/);
     const answerMatch = text.match(/<答案>(.*?)<\/答案>/);
     const explanationMatch = text.match(/<法规解释>([\s\S]*?)<\/法规解释>/);
@@ -55,36 +61,40 @@ function parseAIResponse(text) {
             keywords: keywordsMatch[1].trim()
         };
     }
-    return null; // 如果格式不匹配，返回null
+    return null;
 }
 
 // 定义 POST API 端点
 app.post('/api', async (req, res) => {
     try {
-        const { image } = req.body;
-        if (!image) {
-            return res.status(400).json({ error: '请求体中未找到图片数据 (image data not found in body)' });
-        }
-
+        const { image, context, question } = req.body;
         const apiKey = process.env.GEMINI_API_KEY;
         const modelName = "gemini-1.5-pro-latest";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+        
+        let systemInstructionText;
+        let userParts = [];
 
+        if (image) {
+            // --- 模式1：初次图片分析 ---
+            systemInstructionText = initialAnalysisPrompt;
+            userParts.push({ text: "请严格按照你的分析流程和输出格式进行操作。" });
+            userParts.push({ inlineData: { mimeType: 'image/jpeg', data: image } });
+
+        } else if (context && question) {
+            // --- 模式2：后续问答 ---
+            systemInstructionText = followUpPrompt;
+            const contextString = `这是之前的分析上下文：\n${JSON.stringify(context, null, 2)}`;
+            userParts.push({ text: contextString });
+            userParts.push({ text: `现在，请回答用户基于以上内容提出的问题：\n"${question}"` });
+
+        } else {
+            return res.status(400).json({ error: '无效的请求。请提供图片或上下文和问题。' });
+        }
+        
         const payload = {
-            systemInstruction: {
-                parts: [{ text: systemPrompt }]
-            },
-            contents: [{
-                parts: [
-                    { text: "请严格按照你的分析流程和输出格式进行操作。" },
-                    {
-                        inlineData: {
-                            mimeType: 'image/jpeg',
-                            data: image,
-                        }
-                    }
-                ]
-            }]
+            systemInstruction: { parts: [{ text: systemInstructionText }] },
+            contents: [{ parts: userParts }]
         };
 
         const apiResponse = await fetch(url, {
@@ -102,22 +112,25 @@ app.post('/api', async (req, res) => {
         const textFromAI = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!textFromAI) {
-            throw new Error("AI did not return any text content.");
+            throw new Error("AI没有返回任何文本内容。");
         }
 
-        const analysis = parseAIResponse(textFromAI);
-
-        if (analysis) {
-            res.json(analysis);
-        } else {
-            console.warn('AI response parsing failed, returning raw text as fallback explanation.');
-            res.json({
-                translation: "解析失败",
-                correctAnswer: "无法确定",
-                explanation: `AI未能按预期的文本标记格式返回结果。其原始回复如下：\n\n"${textFromAI}"`,
-                relatedPoints: "无",
-                keywords: "无"
-            });
+        // 根据模式返回不同格式的响应
+        if (image) {
+            const analysis = parseInitialResponse(textFromAI);
+            if (analysis) {
+                res.json(analysis);
+            } else {
+                res.json({
+                    translation: "解析失败",
+                    correctAnswer: "无法确定",
+                    explanation: `AI未能按预期的文本标记格式返回结果。其原始回复如下：\n\n"${textFromAI}"`,
+                    relatedPoints: "无",
+                    keywords: "无"
+                });
+            }
+        } else { // Follow-up question
+            res.json({ answer: textFromAI });
         }
 
     } catch (apiError) {
