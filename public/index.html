@@ -111,6 +111,10 @@
                             <h3><span class="mr-2">🔗</span>知识点扩展</h3>
                             <p id="related-points-text" class="whitespace-pre-wrap"></p>
                         </div>
+                        <div id="keywords-card" class="result-card">
+                            <h3><span class="mr-2">🔑</span>关键词汇</h3>
+                            <p id="keywords-text" class="whitespace-pre-wrap"></p>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -133,6 +137,7 @@
         const answerText = document.getElementById('answer-text');
         const explanationText = document.getElementById('explanation-text');
         const relatedPointsText = document.getElementById('related-points-text');
+        const keywordsText = document.getElementById('keywords-text');
 
         let imageBase64 = '';
 
@@ -229,6 +234,7 @@
             answerText.innerText = data.correctAnswer || '无';
             explanationText.innerText = data.explanation || '无';
             relatedPointsText.innerText = data.relatedPoints || '无';
+            keywordsText.innerText = data.keywords || '无';
         }
 
         function displayError(message) {
