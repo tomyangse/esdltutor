@@ -1,9 +1,8 @@
 // 使用 ES 模块导入
 import express from 'express';
-// 【核心修复】恢复为标准的、最可靠的导入方式
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import cors from 'cors';
 import 'dotenv/config';
+// 我们不再需要导入 '@google/generative-ai'，将使用原生的 fetch
 
 // 初始化 Express 应用
 const app = express();
@@ -15,30 +14,20 @@ app.use(cors());
 // 增加请求体大小限制，例如50MB，以处理高分辨率图片
 app.use(express.json({ limit: '50mb' }));
 
-// 【核心修复】在初始化时明确指定使用 'v1beta' API，以找到新模型
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY, {
-    apiClient: "v1beta",
-});
-
 // 【最终版指令 - 遵循您的两步逻辑】
 const systemPrompt = `
 **身份:** 你是一位专门解答西班牙驾照理论考试 (examen teórico del permiso de conducir) 的AI专家。
-
 **任务:** 用户会上传一张西班牙驾照理论考试的练习题图片。你的任务是严格遵循以下分析流程来解答问题。
-
 **分析流程 (Methodology):**
 1.  **第一步：提取文本** - 首先，仔细地从图片中提取出问题和所有选项的完整西班牙语文本。这是你的思考基础。
 2.  **第二步：分析与解答** - 接下来，严格根据你脑中的西班牙官方交通法规知识库，分析你刚刚提取出的问题，独立判断出哪个选项是唯一正确的答案，并准备好理论依据。
-
 **绝对规则 (Absolute Rule):**
 * 在你的整个分析过程中，必须完全忽略图片上可能存在的任何对勾(✓)、叉(✗)或其他用户标记。你的判断必须完全基于法规，而不是图片上的提示。
-
 **结构化解释要求:**
 你的解释必须包含以下几个部分，并使用换行分隔：
 * **法规依据:** 清晰说明与题目相关的核心交通法规。
 * **特殊情况:** (如果存在)说明该法规的任何例外情况。
 * **本题解析:** 结合题目，总结并解释为什么该法规适用于本题，从而清晰地推导出正确答案。
-
 **输出格式:**
 你的最终回答必须严格遵守以下文本标记格式，不能有任何多余的文字:
 <答案>你独立判断出的正确选项字母</答案><解释>包含了'法规依据', '特殊情况', 和 '本题解析'三个部分的详细中文解释。</解释>`;
@@ -57,7 +46,6 @@ function parseAIResponse(text) {
     return null; // 如果格式不匹配，返回null
 }
 
-
 // 定义 POST API 端点
 app.post('/api', async (req, res) => {
     try {
@@ -66,31 +54,53 @@ app.post('/api', async (req, res) => {
             return res.status(400).json({ error: '请求体中未找到图片数据 (image data not found in body)' });
         }
 
-        const model = genAI.getGenerativeModel({
-            // 使用在 v1beta 上最强大的模型
-            model: "gemini-1.5-pro-latest", 
-            systemInstruction: systemPrompt,
-        });
+        // --- 【核心逻辑重构：使用直接的 REST API 调用】 ---
+        const apiKey = process.env.GEMINI_API_KEY;
+        const modelName = "gemini-1.5-pro-latest";
+        // 明确指定使用 v1beta API 端点
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-        const imagePart = {
-            inlineData: {
-                data: image,
-                mimeType: 'image/jpeg', // 假设是jpeg，也可以是png等
+        const payload = {
+            systemInstruction: {
+                parts: [{ text: systemPrompt }]
             },
+            contents: [{
+                parts: [
+                    { text: "请严格按照你的分析流程和输出格式进行操作。" },
+                    {
+                        inlineData: {
+                            mimeType: 'image/jpeg',
+                            data: image,
+                        }
+                    }
+                ]
+            }]
         };
 
-        const result = await model.generateContent(["请严格按照你的分析流程和输出格式进行操作。", imagePart]);
-        const response = result.response;
-        const textFromAI = response.text();
-        
-        // 使用解析函数来处理AI返回的文本
+        const apiResponse = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!apiResponse.ok) {
+            const errorData = await apiResponse.json();
+            throw new Error(`Google API Error: ${apiResponse.status} - ${JSON.stringify(errorData)}`);
+        }
+
+        const result = await apiResponse.json();
+        const textFromAI = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+        if (!textFromAI) {
+            throw new Error("AI did not return any text content.");
+        }
+        // --- 【重构结束】 ---
+
         const analysis = parseAIResponse(textFromAI);
 
         if (analysis) {
-            // 如果成功解析，返回JSON
             res.json(analysis);
         } else {
-            // 如果解析失败，说明AI返回了非结构化文本
             console.warn('AI response parsing failed, returning raw text as fallback explanation.');
             res.json({
                 correctAnswer: "无法确定",
