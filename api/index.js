@@ -14,17 +14,18 @@ app.use(cors());
 // 增加请求体大小限制，例如50MB，以处理高分辨率图片
 app.use(express.json({ limit: '50mb' }));
 
-// 【最终版指令 - 四段式输出】
+// 【最终版指令 - 五段式输出】
 const systemPrompt = `
 **身份:** 你是一位专门解答西班牙驾照理论考试 (examen teórico del permiso de conducir) 的AI专家。
 
 **任务:** 用户会上传一张西班牙驾照理论考试的练习题图片。你的任务是严格遵循以下分析流程和输出格式来解答问题。
 
 **分析流程 (Methodology):**
-1.  **第一步：提取与翻译** - 首先，从图片中提取出问题和所有选项的西班牙语文本，然后将它们准确地翻译成中文。
-2.  **第二步：分析与解答** - 接下来，严格根据你脑中的西班牙官方交通法规知识库，独立判断出哪个选项是唯一正确的答案。
+1.  **第一步：翻译** - 将图片中的西班牙语问题和所有选项准确地翻译成中文。
+2.  **第二步：分析与解答** - 严格根据你脑中的西班牙官方交通法规知识库，独立判断出哪个选项是唯一正确的答案。
 3.  **第三步：解释依据** - 详细解释你的判断所依据的交通法规。
 4.  **第四步：知识扩展** - 基于本题的核心考点，再引申出两个相关的法规知识点。
+5.  **第五步：关键词汇** - 从题目中提取3-5个核心的西班牙语交通词汇，并提供其中文翻译。
 
 **绝对规则 (Absolute Rule):**
 * 你的判断必须完全基于法规，而不是图片上可能存在的任何用户标记。
@@ -34,7 +35,8 @@ const systemPrompt = `
 <翻译>此处为题目和选项的中文翻译</翻译>
 <答案>你独立判断出的正确选项字母</答案>
 <法规解释>此处为详细的中文法规解释</法规解释>
-<知识点扩展>此处为两个相关的中文知识点扩展，请用项目符号分开</知识点扩展>`;
+<知识点扩展>此处为两个相关的中文知识点扩展，请用项目符号分开</知识点扩展>
+<关键词汇>此处为关键词列表，格式为 '西班牙语单词 - 中文翻译'，每行一个</关键词汇>`;
 
 // 定义一个辅助函数来解析AI返回的带标记的文本
 function parseAIResponse(text) {
@@ -42,13 +44,15 @@ function parseAIResponse(text) {
     const answerMatch = text.match(/<答案>(.*?)<\/答案>/);
     const explanationMatch = text.match(/<法规解释>([\s\S]*?)<\/法规解释>/);
     const relatedPointsMatch = text.match(/<知识点扩展>([\s\S]*?)<\/知识点扩展>/);
+    const keywordsMatch = text.match(/<关键词汇>([\s\S]*?)<\/关键词汇>/);
 
-    if (translationMatch && answerMatch && explanationMatch && relatedPointsMatch) {
+    if (translationMatch && answerMatch && explanationMatch && relatedPointsMatch && keywordsMatch) {
         return {
             translation: translationMatch[1].trim(),
             correctAnswer: answerMatch[1].trim(),
             explanation: explanationMatch[1].trim(),
-            relatedPoints: relatedPointsMatch[1].trim()
+            relatedPoints: relatedPointsMatch[1].trim(),
+            keywords: keywordsMatch[1].trim()
         };
     }
     return null; // 如果格式不匹配，返回null
@@ -62,10 +66,8 @@ app.post('/api', async (req, res) => {
             return res.status(400).json({ error: '请求体中未找到图片数据 (image data not found in body)' });
         }
 
-        // --- 【核心逻辑重构：使用直接的 REST API 调用】 ---
         const apiKey = process.env.GEMINI_API_KEY;
         const modelName = "gemini-1.5-pro-latest";
-        // 明确指定使用 v1beta API 端点
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
         const payload = {
@@ -102,7 +104,6 @@ app.post('/api', async (req, res) => {
         if (!textFromAI) {
             throw new Error("AI did not return any text content.");
         }
-        // --- 【重构结束】 ---
 
         const analysis = parseAIResponse(textFromAI);
 
@@ -114,7 +115,8 @@ app.post('/api', async (req, res) => {
                 translation: "解析失败",
                 correctAnswer: "无法确定",
                 explanation: `AI未能按预期的文本标记格式返回结果。其原始回复如下：\n\n"${textFromAI}"`,
-                relatedPoints: "无"
+                relatedPoints: "无",
+                keywords: "无"
             });
         }
 
