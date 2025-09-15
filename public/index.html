@@ -3,345 +3,332 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>西班牙驾考AI导师</title>
+    <title>西班牙驾考题目智能分析器</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .drag-area { border-color: #cbd5e1; }
-        .drag-area.dragging { border-color: #2563eb; background-color: #eff6ff; }
-        .chat-bubble { max-width: 80%; }
-        .chat-bubble-user { background-color: #2563eb; color: white; }
-        .chat-bubble-ai { background-color: #e5e7eb; color: #1f2937; }
-        .history-item:hover { background-color: #f3f4f6; }
-        .history-item.due { border-left: 4px solid #f59e0b; }
-        .scrollbar-hide::-webkit-scrollbar { display: none; }
-        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-        .prose { max-width: none; }
-        .prose strong { color: #1f2937; }
-        .prose em { color: #4b5563; }
-        .prose details > summary { font-weight: 600; color: #2563eb; cursor: pointer; }
-        .card-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 0.75rem;
-            color: #4b5563;
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        }
+        .drop-zone {
+            transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out;
+        }
+        .drop-zone.dragover {
+            background-color: #e0e7ff;
+            border-color: #4f46e5;
+        }
+        .loader {
+            border-top-color: #4f46e5;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .result-card {
+            background-color: #f8f9fa;
+            border-left: 4px solid #4f46e5;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: 0.25rem;
+        }
+         .result-card h3 {
+            font-weight: 600;
+            color: #3730a3;
+            margin-bottom: 0.5rem;
+        }
+        .result-card-answer {
+            background-color: #e0e7ff;
+            border-left: 4px solid #3730a3;
+        }
+        .result-card-answer span {
+            font-weight: bold;
+            font-size: 1.5rem;
+            color: #4338ca;
+        }
+        .chat-bubble {
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem;
+            max-width: 80%;
+        }
+        .user-bubble {
+            background-color: #e0e7ff;
+            color: #3730a3;
+            align-self: flex-end;
+        }
+        .ai-bubble {
+            background-color: #f3f4f6;
+            color: #374151;
+            align-self: flex-start;
         }
     </style>
 </head>
-<body class="bg-gray-100 text-gray-800">
+<body class="bg-slate-50 text-slate-800">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+    <div class="container mx-auto p-4 md:p-8 max-w-6xl">
         <header class="text-center mb-8">
-            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">西班牙驾考AI导师</h1>
-            <p class="text-gray-600 mt-2">上传练习题图片，AI助您轻松理解交规，高效备考！</p>
+            <h1 class="text-4xl font-bold text-slate-900">西班牙驾考题目智能分析器</h1>
+            <p class="text-lg text-slate-600 mt-2">上传练习题图片，AI助您轻松理解交规，高效备考！</p>
         </header>
 
-        <main class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <!-- Left side: Core functionality -->
-            <div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col">
-                <div id="upload-area" class="drag-area w-full p-8 border-2 border-dashed rounded-lg text-center cursor-pointer transition-all">
-                    <div>
-                        <svg class="mx-auto h-12 w-12 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
-                        <p class="mt-2 text-gray-600">拖拽图片到这里，或 <span class="font-medium text-blue-600">点击上传</span></p>
-                        <input type="file" id="file-input" class="hidden" accept="image/*">
-                    </div>
+        <main class="grid md:grid-cols-2 gap-8">
+            <!-- Left Column: Uploader and Preview -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <div id="drop-zone" class="drop-zone border-2 border-dashed border-slate-300 rounded-lg p-8 text-center cursor-pointer hover:border-indigo-600 hover:bg-indigo-50">
+                    <svg class="mx-auto h-12 w-12 text-slate-400" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+                    </svg>
+                    <p class="mt-2 text-slate-500">拖拽图片到这里, 或 <span class="font-semibold text-indigo-600">点击上传</span></p>
+                    <input type="file" id="file-input" class="hidden" accept="image/*">
                 </div>
+                
                 <div id="image-preview-container" class="mt-6 hidden">
-                    <p class="font-semibold mb-2">图片预览:</p>
-                    <img id="image-preview" src="#" alt="图片预览" class="max-w-full h-auto rounded-lg mx-auto shadow-md">
+                    <h3 class="font-semibold text-lg mb-2">图片预览:</h3>
+                    <img id="image-preview" src="#" alt="上传的图片" class="max-w-full h-auto rounded-lg shadow-md mx-auto">
                 </div>
-                <button id="analyze-btn" class="mt-6 w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400" disabled>开始分析</button>
-                <div class="mt-8 flex-grow overflow-y-auto scrollbar-hide pr-2">
-                    <div id="result-container" class="space-y-6"></div>
-                    <div id="follow-up-container" class="mt-8 hidden">
-                        <h3 class="text-xl font-semibold mb-4 text-gray-800 border-b pb-2">深入提问</h3>
-                        <p class="text-sm text-gray-500 mb-2">提问功能将针对分析的第一道题。</p>
-                        <div id="chat-history" class="h-64 overflow-y-auto bg-gray-50 p-4 rounded-lg space-y-4 mb-4 scrollbar-hide flex flex-col"></div>
-                        <div class="flex space-x-2">
-                            <input type="text" id="question-input" class="flex-grow border border-gray-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500" placeholder="还有疑问？在这里输入...">
-                            <button id="ask-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700">提问</button>
-                        </div>
-                    </div>
-                </div>
+
+                <button id="analyze-btn" class="mt-6 w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-slate-400 disabled:cursor-not-allowed transition-colors" disabled>
+                    开始分析
+                </button>
             </div>
 
-            <!-- Right side: Learning History -->
-            <div class="bg-white p-6 rounded-2xl shadow-lg flex flex-col">
-                <h2 class="text-2xl font-bold text-gray-800 mb-4 border-b pb-2">学习记录</h2>
-                <div id="history-list" class="space-y-2 flex-grow overflow-y-auto scrollbar-hide pr-2">
-                    <p id="no-history-msg" class="text-gray-500 text-center py-10">暂无学习记录。完成分析后，考点将自动记录。</p>
+            <!-- Right Column: Analysis Result -->
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4 text-center">分析结果</h2>
+                <div id="result-container" class="space-y-4">
+                    <!-- Placeholder -->
+                    <div id="placeholder" class="text-center text-slate-500 py-16">
+                        <svg class="mx-auto h-16 w-16 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p class="mt-4">分析结果将显示在这里</p>
+                    </div>
+                    <!-- Loader -->
+                    <div id="loader" class="hidden flex justify-center items-center py-16">
+                        <div class="loader w-12 h-12 rounded-full border-4 border-slate-200"></div>
+                        <p class="ml-4 text-slate-600">正在调用AI进行分析，请稍候...</p>
+                    </div>
+                    <!-- Error Message -->
+                    <div id="error-message" class="hidden text-center text-red-600 bg-red-100 p-4 rounded-lg"></div>
+                    <!-- Result Sections -->
+                    <div id="result-sections" class="hidden space-y-4">
+                        <div id="translation-card" class="result-card">
+                            <h3><span class="mr-2">📝</span>题目翻译</h3>
+                            <p id="translation-text" class="whitespace-pre-wrap"></p>
+                        </div>
+                        <div id="answer-card" class="result-card result-card-answer">
+                            <h3><span class="mr-2">✅</span>正确答案</h3>
+                            <p><span id="answer-text"></span></p>
+                        </div>
+                        <div id="explanation-card" class="result-card">
+                             <h3><span class="mr-2">📖</span>法规解释</h3>
+                            <p id="explanation-text" class="whitespace-pre-wrap"></p>
+                        </div>
+                         <div id="related-points-card" class="result-card">
+                            <h3><span class="mr-2">🔗</span>知识点扩展</h3>
+                            <p id="related-points-text" class="whitespace-pre-wrap"></p>
+                        </div>
+                        <div id="keywords-card" class="result-card">
+                            <h3><span class="mr-2">🔑</span>关键词汇</h3>
+                            <p id="keywords-text" class="whitespace-pre-wrap"></p>
+                        </div>
+                    </div>
+
+                    <!-- Follow-up Questions Section -->
+                    <div id="follow-up-container" class="hidden mt-6 pt-6 border-t border-slate-200">
+                        <h3 class="text-xl font-bold mb-4 text-slate-800">深入提问</h3>
+                        <div id="conversation-history" class="mb-4 space-y-4 flex flex-col"></div>
+                        <div class="flex gap-2">
+                            <input type="text" id="question-input" class="flex-grow border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="对以上分析有疑问？请在此输入...">
+                            <button id="ask-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 disabled:bg-slate-400">提问</button>
+                        </div>
+                        <div id="follow-up-loader" class="hidden text-center mt-4">
+                            <p class="text-slate-600">AI正在思考中...</p>
+                        </div>
+                    </div>
+
                 </div>
-                <button id="generate-test-btn" class="mt-6 w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 disabled:bg-gray-400" disabled>根据已学考点生成复习测试</button>
             </div>
         </main>
     </div>
 
-    <!-- Modal for details -->
-    <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] flex flex-col">
-            <div class="flex justify-between items-center mb-4 flex-shrink-0">
-                <h3 id="modal-title" class="text-xl font-bold">详细解析</h3>
-                <button id="modal-close" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
-            </div>
-            <div id="modal-content" class="overflow-y-auto scrollbar-hide flex-grow"></div>
-        </div>
-    </div>
-
-    <script type="module">
-        // Using localStorage, no Firebase needed
-        let currentAnalysis = null;
-        let learningHistory = [];
-        const ui = {};
-
-        // --- Learning History Functions (localStorage) ---
-        function loadLearningHistory() {
-            try {
-                const historyJSON = localStorage.getItem('esTutorHistory');
-                learningHistory = historyJSON ? JSON.parse(historyJSON) : [];
-                learningHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                renderHistoryList();
-            } catch (error) {
-                console.error("Failed to load history from localStorage:", error);
-                learningHistory = [];
-            }
-        }
-
-        function renderHistoryList() {
-            ui.historyList.innerHTML = '';
-            if (learningHistory.length > 0) {
-                ui.noHistoryMsg.classList.add('hidden');
-                ui.generateTestBtn.disabled = false;
-                learningHistory.forEach(item => {
-                    const div = document.createElement('div');
-                    div.className = 'history-item p-3 rounded-lg cursor-pointer transition-colors border';
-                    div.innerHTML = `<p class="font-semibold text-gray-700">${item.knowledgePoint}</p><p class="text-sm text-gray-500">${new Date(item.timestamp).toLocaleString()}</p>`;
-                    div.onclick = () => showHistoryDetail(item.id);
-                    ui.historyList.appendChild(div);
-                });
-            } else {
-                ui.noHistoryMsg.classList.remove('hidden');
-                ui.generateTestBtn.disabled = true;
-            }
-        }
-
-        async function saveHistory(analysisData) {
-            if (!analysisData.knowledgePoint) return;
-            try {
-                const newRecord = { ...analysisData, id: Date.now().toString() + Math.random(), timestamp: new Date().toISOString() };
-                learningHistory.unshift(newRecord);
-                localStorage.setItem('esTutorHistory', JSON.stringify(learningHistory));
-                renderHistoryList();
-            } catch (error) {
-                console.error("Error saving history to localStorage:", error);
-            }
-        }
+    <script>
+        // ... (existing variable declarations) ...
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
         
-        function showHistoryDetail(recordId) {
-            const item = learningHistory.find(h => h.id === recordId);
-            if(item) {
-                currentAnalysis = item; // Set context for potential follow-up questions from history
-                ui.modalTitle.textContent = "历史记录详情 - " + item.knowledgePoint;
-                ui.modalContent.innerHTML = createAnalysisHTML(item);
-                showModal();
-            }
-        }
+        const placeholder = document.getElementById('placeholder');
+        const loader = document.getElementById('loader');
+        const errorMessage = document.getElementById('error-message');
+        const resultSections = document.getElementById('result-sections');
 
-        // --- API Call Function ---
-        async function callApi(payload) {
-            try {
-                const response = await fetch('/api', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                if (!response.ok) {
-                    const errorBody = await response.json();
-                    throw new Error(errorBody.error || `HTTP error! status: ${response.status}`);
-                }
-                return await response.json();
-            } catch (error) {
-                console.error("API call failed:", error);
-                throw error;
-            }
-        }
+        const translationText = document.getElementById('translation-text');
+        const answerText = document.getElementById('answer-text');
+        const explanationText = document.getElementById('explanation-text');
+        const relatedPointsText = document.getElementById('related-points-text');
+        const keywordsText = document.getElementById('keywords-text');
 
-        // --- Core Logic ---
-        async function analyzeImage(base64Image) {
-            resetUI();
-            displayLoading();
-            try {
-                const data = await callApi({ image: base64Image });
-                const analysisArray = data.analysis;
-                if (analysisArray && Array.isArray(analysisArray) && analysisArray.length > 0) {
-                    currentAnalysis = analysisArray[0]; // For follow-up, focus on the first question
-                    displayMultipleResults(analysisArray);
-                    // Save each analyzed question to history
-                    for (const analysis of analysisArray) {
-                        await saveHistory(analysis);
-                    }
-                } else {
-                    throw new Error("AI未能从图片中识别出任何完整的题目。");
-                }
-            } catch (error) {
-                displayError(error.message);
-            }
-        }
-        
-        function displayMultipleResults(analysisArray) {
-            ui.resultContainer.innerHTML = ''; // Clear loading
-            analysisArray.forEach((analysis, index) => {
-                const container = document.createElement('div');
-                container.className = 'border-2 border-blue-100 p-4 rounded-xl shadow-md';
-                container.innerHTML = `
-                    <h3 class="text-xl font-bold mb-4 text-blue-800">题目 ${index + 1} 分析</h3>
-                    ${createAnalysisHTML(analysis)}
-                `;
-                ui.resultContainer.appendChild(container);
-            });
-            ui.followUpContainer.classList.remove('hidden');
-        }
+        // New elements for follow-up questions
+        const followUpContainer = document.getElementById('follow-up-container');
+        const conversationHistory = document.getElementById('conversation-history');
+        const questionInput = document.getElementById('question-input');
+        const askBtn = document.getElementById('ask-btn');
+        const followUpLoader = document.getElementById('follow-up-loader');
 
-        async function askFollowUp(question) {
-            if (!question.trim() || !currentAnalysis) return;
-            addMessageToChat('user', question);
-            ui.questionInput.value = '';
-            showChatLoading();
-            try {
-                const data = await callApi({ context: currentAnalysis, question: question });
-                removeChatLoading();
-                addMessageToChat('ai', data.answer);
-            } catch (error) {
-                removeChatLoading();
-                addMessageToChat('ai', `抱歉，回答时遇到问题: ${error.message}`);
-            }
-        }
+        let imageBase64 = '';
+        let initialAnalysisContext = null;
 
-        async function generateTest() {
-            const topics = [...new Set(learningHistory.map(item => item.knowledgePoint))];
-            if (topics.length === 0) return;
-            showModalLoading("正在为您智能组卷...");
-            try {
-                const data = await callApi({ testTopics: topics });
-                ui.modalTitle.textContent = "复习测试";
-                ui.modalContent.innerHTML = createTestHTML(data.testQuestions);
-            } catch(error) {
-                ui.modalContent.innerHTML = `<p class="text-red-500">生成测试失败: ${error.message}</p>`;
-            }
-        }
-        
-        // --- UI Helper Functions ---
-        function resetUI() {
-            ui.resultContainer.innerHTML = '';
-            ui.followUpContainer.classList.add('hidden');
-            ui.chatHistoryContainer.innerHTML = '';
-            currentAnalysis = null;
-        }
+        // ... (existing file handling and drag/drop listeners) ...
+        dropZone.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => e.target.files[0] && handleFile(e.target.files[0]));
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            e.dataTransfer.files[0] && handleFile(e.dataTransfer.files[0]);
+        });
 
-        function displayLoading() {
-            ui.resultContainer.innerHTML = `<div class="flex items-center justify-center p-8"><svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="text-lg font-medium">AI 正在分析中...</span></div>`;
-        }
-        
-        function displayError(message) {
-            ui.resultContainer.innerHTML = `<div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg" role="alert"><p class="font-bold">分析失败</p><p>${message}</p></div>`;
-        }
-        
-        // This function creates the 5-part analysis HTML for one question
-        function createAnalysisHTML(data) {
-             const icons = {
-                translation: `<svg class="card-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A11.953 11.953 0 0012 13.5c2.998 0 5.74 1.1 7.843 2.918m-15.686 0A8.959 8.959 0 003 12c0-.778.099-1.533.284-2.253m0 0l1.498 1.498m-1.498-1.498l1.498-1.498" /></svg>`,
-                correctAnswer: `<svg class="card-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>`,
-                explanation: `<svg class="card-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>`,
-                relatedPoints: `<svg class="card-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.898 20.572L16.5 21.75l-.398-1.178a3.375 3.375 0 00-2.456-2.456L12.75 18l1.178-.398a3.375 3.375 0 002.456-2.456L16.5 14.25l.398 1.178a3.375 3.375 0 002.456 2.456L20.25 18l-1.178.398a3.375 3.375 0 00-2.456 2.456z" /></svg>`,
-                keywords: `<svg class="card-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" /><path stroke-linecap="round" stroke-linejoin="round" d="M6 6h.008v.008H6V6z" /></svg>`,
-            };
-
-            return `
-                <div class="space-y-4">
-                    ${createCard('题目翻译', data.translation, icons.translation)}
-                    ${createCard('正确答案', `<span class="text-2xl font-bold text-green-600">${data.correctAnswer}</span>`, icons.correctAnswer)}
-                    ${createCard('法规解释', data.explanation, icons.explanation)}
-                    ${createCard('知识点扩展', data.relatedPoints.replace(/\*/g, '<br>• '), icons.relatedPoints)}
-                    ${createCard('关键词汇', data.keywords.replace(/\n/g, '<br>'), icons.keywords)}
-                </div>`;
-        }
-        
-        function createCard(title, content, iconHTML) {
-            return `<div class="border rounded-lg bg-white shadow-sm overflow-hidden"><h4 class="font-semibold text-lg p-4 bg-gray-50 border-b flex items-center">${iconHTML || ''} ${title}</h4><div class="p-4 text-gray-700 leading-relaxed">${content || "N/A"}</div></div>`;
-        }
-
-        function createTestHTML(questions) {
-            let html = '<div class="space-y-6">';
-            questions.forEach((q, index) => {
-                html += `<div class="border rounded-lg p-4 prose"><p><strong>第 ${index + 1} 题:</strong> ${q.question_es}</p><p><em>${q.question_zh}</em></p><div class="space-y-1 mb-4">${q.options.map(opt => `<div>${opt}</div>`).join('')}</div><details><summary>点击查看答案和解析</summary><div class="mt-2 p-3 bg-gray-50 rounded"><p><strong>正确答案:</strong> ${q.correct_answer}</p><p><strong>解析:</strong> ${q.explanation}</p></div></details></div>`;
-            });
-            return html + '</div>';
-        }
-
-        function addMessageToChat(sender, message) {
-            const bubble = document.createElement('div');
-            bubble.className = `chat-bubble p-3 rounded-lg ${sender === 'user' ? 'chat-bubble-user self-end' : 'chat-bubble-ai self-start'}`;
-            bubble.textContent = message;
-            ui.chatHistoryContainer.appendChild(bubble);
-            ui.chatHistoryContainer.scrollTop = ui.chatHistoryContainer.scrollHeight;
-        }
-
-        function showChatLoading() {
-            const loadingBubble = document.createElement('div');
-            loadingBubble.id = 'chat-loading';
-            loadingBubble.className = 'chat-bubble chat-bubble-ai self-start p-3 rounded-lg flex items-center';
-            loadingBubble.innerHTML = `<svg class="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> 思考中...`;
-            ui.chatHistoryContainer.appendChild(loadingBubble);
-            ui.chatHistoryContainer.scrollTop = ui.chatHistoryContainer.scrollHeight;
-        }
-
-        function removeChatLoading() {
-            const loadingBubble = document.getElementById('chat-loading');
-            if (loadingBubble) loadingBubble.remove();
-        }
-        
-        function showModal() { ui.modal.classList.remove('hidden'); ui.modal.classList.add('flex'); }
-        function hideModal() { ui.modal.classList.add('hidden'); ui.modal.classList.remove('flex'); }
-        
-        function showModalLoading(message) {
-            ui.modalTitle.textContent = "请稍候";
-            ui.modalContent.innerHTML = `<div class="flex items-center justify-center p-8"><svg class="animate-spin -ml-1 mr-3 h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="text-lg font-medium">${message}</span></div>`;
-            showModal();
-        }
-
-        // --- Event Listeners ---
-        function setupEventListeners() {
-            ui.uploadArea.addEventListener('click', () => ui.fileInput.click());
-            ui.fileInput.addEventListener('change', (e) => { if (e.target.files[0]) handleFile(e.target.files[0]); });
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { ui.uploadArea.addEventListener(eventName, (e) => { e.preventDefault(); e.stopPropagation(); }); });
-            ['dragenter', 'dragover'].forEach(eventName => { ui.uploadArea.addEventListener(eventName, () => ui.uploadArea.classList.add('dragging')); });
-            ['dragleave', 'drop'].forEach(eventName => { ui.uploadArea.addEventListener(eventName, () => ui.uploadArea.classList.remove('dragging')); });
-            ui.uploadArea.addEventListener('drop', (e) => { if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
-            ui.analyzeBtn.addEventListener('click', () => { analyzeImage(ui.imagePreview.src.split(',')[1]); });
-            ui.askBtn.addEventListener('click', () => askFollowUp(ui.questionInput.value));
-            ui.questionInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') askFollowUp(ui.questionInput.value); });
-            ui.modalClose.addEventListener('click', hideModal);
-            ui.generateTestBtn.addEventListener('click', generateTest);
-        }
 
         function handleFile(file) {
-            if (!file.type.startsWith('image/')) { alert('请上传图片文件!'); return; }
+            if (!file.type.startsWith('image/')) {
+                displayError('请上传图片文件。');
+                return;
+            }
             const reader = new FileReader();
             reader.onload = (e) => {
-                ui.imagePreview.src = e.target.result;
-                ui.imagePreviewContainer.classList.remove('hidden');
-                ui.analyzeBtn.disabled = false;
+                imagePreview.src = e.target.result;
+                imagePreviewContainer.classList.remove('hidden');
+                imageBase64 = e.target.result.split(',')[1];
+                analyzeBtn.disabled = false;
+                resetResultState();
+                followUpContainer.classList.add('hidden'); // Hide on new image
             };
             reader.readAsDataURL(file);
         }
 
-        // --- Kick off the app ---
-        document.addEventListener('DOMContentLoaded', () => {
-            Object.assign(ui, { uploadArea: document.getElementById('upload-area'), fileInput: document.getElementById('file-input'), analyzeBtn: document.getElementById('analyze-btn'), imagePreviewContainer: document.getElementById('image-preview-container'), imagePreview: document.getElementById('image-preview'), resultContainer: document.getElementById('result-container'), followUpContainer: document.getElementById('follow-up-container'), chatHistoryContainer: document.getElementById('chat-history'), questionInput: document.getElementById('question-input'), askBtn: document.getElementById('ask-btn'), historyList: document.getElementById('history-list'), noHistoryMsg: document.getElementById('no-history-msg'), generateTestBtn: document.getElementById('generate-test-btn'), modal: document.getElementById('modal'), modalTitle: document.getElementById('modal-title'), modalContent: document.getElementById('modal-content'), modalClose: document.getElementById('modal-close') });
-            loadLearningHistory();
-            setupEventListeners();
+        analyzeBtn.addEventListener('click', async () => {
+            if (!imageBase64) return;
+            
+            setLoadingState(true);
+
+            try {
+                const response = await fetch('/api', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: imageBase64 })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || '分析过程中出现未知错误。');
+                }
+
+                const result = await response.json();
+                displayResult(result);
+
+            } catch (error) {
+                console.error('Analysis error:', error);
+                displayError(error.message);
+            } finally {
+                setLoadingState(false);
+            }
         });
+
+        // Event listener for the new "Ask" button
+        askBtn.addEventListener('click', handleFollowUpQuestion);
+        questionInput.addEventListener('keyup', (e) => {
+            if(e.key === 'Enter') {
+                handleFollowUpQuestion();
+            }
+        });
+
+        async function handleFollowUpQuestion() {
+            const userQuestion = questionInput.value.trim();
+            if (!userQuestion || !initialAnalysisContext) return;
+
+            // Display user's question immediately
+            appendChatMessage(userQuestion, 'user');
+            questionInput.value = '';
+            followUpLoader.classList.remove('hidden');
+            askBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        context: initialAnalysisContext,
+                        question: userQuestion
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'AI回答时出现错误。');
+                }
+                const result = await response.json();
+                appendChatMessage(result.answer, 'ai');
+
+            } catch (error) {
+                 appendChatMessage(`抱歉，回答时出现错误: ${error.message}`, 'ai');
+            } finally {
+                followUpLoader.classList.add('hidden');
+                askBtn.disabled = false;
+            }
+        }
+        
+        function appendChatMessage(message, sender) {
+            const bubble = document.createElement('div');
+            bubble.classList.add('chat-bubble', sender === 'user' ? 'user-bubble' : 'ai-bubble');
+            bubble.innerText = message;
+            conversationHistory.appendChild(bubble);
+            conversationHistory.scrollTop = conversationHistory.scrollHeight; // Scroll to bottom
+        }
+
+        function setLoadingState(isLoading) {
+            if (isLoading) {
+                placeholder.classList.add('hidden');
+                errorMessage.classList.add('hidden');
+                resultSections.classList.add('hidden');
+                followUpContainer.classList.add('hidden');
+                loader.classList.remove('hidden');
+                analyzeBtn.disabled = true;
+            } else {
+                loader.classList.add('hidden');
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function displayResult(data) {
+            resultSections.classList.remove('hidden');
+            translationText.innerText = data.translation || '无';
+            answerText.innerText = data.correctAnswer || '无';
+            explanationText.innerText = data.explanation || '无';
+            relatedPointsText.innerText = data.relatedPoints || '无';
+            keywordsText.innerText = data.keywords || '无';
+
+            // Store context and show follow-up section
+            initialAnalysisContext = data;
+            conversationHistory.innerHTML = '';
+            questionInput.value = '';
+            followUpContainer.classList.remove('hidden');
+        }
+
+        function displayError(message) {
+            errorMessage.innerText = `分析失败: ${message}`;
+            errorMessage.classList.remove('hidden');
+            resultSections.classList.add('hidden');
+            placeholder.classList.add('hidden');
+        }
+
+        function resetResultState() {
+            placeholder.classList.remove('hidden');
+            errorMessage.classList.add('hidden');
+            resultSections.classList.add('hidden');
+        }
     </script>
+
 </body>
 </html>
-
